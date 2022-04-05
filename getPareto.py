@@ -6,7 +6,7 @@ def load_json(file):
         data = json.load(f)
     return {tuple([int(i) for i in key.split(',')]): tuple(value) for key, value in data.items()}
 
-data = load_json('ImageNet.json')
+data = load_json('CIFAR10.json')
 reverse_data = {value: key for key, value in data.items()}
 
 sorted_metrics = sorted(reverse_data.keys())
