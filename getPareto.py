@@ -23,6 +23,6 @@ def get_Pareto(file):
 
 
 if __name__ == '__main__':
-    pareto, config = get_Pareto('CIFAR10.json')
+    pareto, config = get_Pareto('ImageNet.json')
     for i in range(len(pareto)):
         print(pareto[i], config[i])

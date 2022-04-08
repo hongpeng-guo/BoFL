@@ -118,14 +118,14 @@ ref_point = get_reference_point(dataset.observations)
 print(ref_point)
 print('Initial HV value:', Pareto(dataset.observations).hypervolume_indicator(ref_point))
 
-model.update(dataset)
-model.optimize(dataset)
+# model.update(dataset)
+# model.optimize(dataset)
 
 for step in range(num_steps):
 
     print("Asking for new point to observe")
     t0 = timeit.default_timer()
-    ask_tell = AskTellOptimizer(search_space, dataset, model, acquisition_rule=rule, fit_model=False)
+    ask_tell = AskTellOptimizer(search_space, dataset, model, acquisition_rule=rule, fit_model=True)
     t1 = timeit.default_timer()
     new_point = ask_tell.ask()
     t2 = timeit.default_timer()
@@ -142,9 +142,9 @@ for step in range(num_steps):
     print('HV value:', Pareto(dataset.observations).hypervolume_indicator(ref_point))
 
     print("Training models externally")
-    model.update(dataset)
+    # model.update(dataset)
     t4 = timeit.default_timer()
-    model.optimize(dataset)
+    # model.optimize(dataset)
     t5 = timeit.default_timer()
 
     print('Build: {:6.2f}; ASK: {:6.2f}; OB: {:6.2f}; UP: {:6.2f}; OP :{:6.2f}'.format(t1-t0, t2-t1, t3-t2, t4-t3, t5-t4))
