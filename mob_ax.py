@@ -16,7 +16,6 @@ from ax.runners.synthetic import SyntheticRunner
 from ax.modelbridge.factory import get_MOO_EHVI, get_MOO_NEHVI, get_MOO_PAREGO
 from ax.modelbridge.modelbridge_utils import observed_hypervolume
 
-from ax import optimize
 
 confSpaceInt = dvfs.CONFIG_SPACE
 
@@ -31,7 +30,7 @@ def load_json(file):
         data = json.load(f)
     return {tuple([int(i) for i in key.split(',')]): tuple(value) for key, value in data.items()}
 
-function_data = load_json('CIFAR10.json')
+function_data = load_json('ImageNet.json')
 
 def evaluate(conf):
     # print(evaluation_dict, conf in evaluation_dict)

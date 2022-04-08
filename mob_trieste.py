@@ -10,11 +10,12 @@ import tensorflow as tf
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement, Fantasizer
 from trieste.acquisition import LocalPenalization
-from trieste.acquisition.function.multi_objective import BatchMonteCarloExpectedHypervolumeImprovement, batch_ehvi
+from trieste.acquisition.function.multi_objective import BatchMonteCarloExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization, DiscreteThompsonSampling
 from trieste.data import Dataset
-from trieste.models import create_model, TrainableModelStack
-from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models import TrainableModelStack
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
+from trieste.models.interfaces import ReparametrizationSampler
 from trieste.space import DiscreteSearchSpace
 from trieste.objectives import multi_objectives
 from trieste.ask_tell_optimization import AskTellOptimizer
@@ -22,6 +23,7 @@ from trieste.acquisition.multi_objective.pareto import (
     Pareto,
     get_reference_point,
 )
+from trieste.acquisition.multi_objective.partition import prepare_default_non_dominated_partition_bounds
 
 np.random.seed(3793)
 tf.random.set_seed(3793)
@@ -48,7 +50,7 @@ def load_json(file):
         data = json.load(f)
     return {tuple([int(i) for i in key.split(',')]): tuple(value) for key, value in data.items()}
 
-function_data = load_json('CIFAR10.json')
+function_data = load_json('ImageNet.json')
 
 def getSysProfileResult(conf):
     tf.debugging.assert_shapes([(conf, (..., 3))], message="only allow 2d input")
@@ -76,7 +78,7 @@ class SysConfProblem(trieste.objectives.multi_objectives.MultiObjectiveTestProbl
 sysconf = SysConfProblem().objective()
 observer = trieste.objectives.utils.mk_observer(sysconf)
 
-num_initial_points = 20
+num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -94,14 +96,7 @@ def build_stacked_independent_objectives_model(
         single_obj_data = Dataset(
             data.query_points, tf.gather(data.observations, [idx], axis=1)
         )
-        variance = tf.math.reduce_variance(single_obj_data.observations)
-        kernel = gpflow.kernels.Matern52(variance)
-        gpr = gpflow.models.GPR(
-            (single_obj_data.query_points, single_obj_data.observations),
-            kernel,
-            noise_variance=1e-2,
-        )
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        gpr = build_gpr(single_obj_data, search_space, likelihood_variance=1e-5)
         gprs.append((GaussianProcessRegression(gpr), 1))
 
     return TrainableModelStack(*gprs)
@@ -111,15 +106,18 @@ model = build_stacked_independent_objectives_model(initial_data, num_objective)
 # ehvi = ExpectedHypervolumeImprovement()
 # rule: EfficientGlobalOptimization = EfficientGlobalOptimization(builder=ehvi)
 
-
 fant_ehvi = Fantasizer(ExpectedHypervolumeImprovement())
 rule: EfficientGlobalOptimization = EfficientGlobalOptimization(
-    builder=fant_ehvi, num_query_points=10
+    builder=fant_ehvi, num_query_points=1
 )
 
-num_steps = 10
+num_steps = 30
 
 dataset = initial_data
+ref_point = get_reference_point(dataset.observations)
+print(ref_point)
+print('Initial HV value:', Pareto(dataset.observations).hypervolume_indicator(ref_point))
+
 model.update(dataset)
 model.optimize(dataset)
 
@@ -141,6 +139,8 @@ for step in range(num_steps):
     t3 = timeit.default_timer()
     dataset = dataset + new_data_point
 
+    print('HV value:', Pareto(dataset.observations).hypervolume_indicator(ref_point))
+
     print("Training models externally")
     model.update(dataset)
     t4 = timeit.default_timer()
@@ -154,3 +154,6 @@ data_observations = dataset.observations
 
 print(data_query_points)
 print(data_observations)
+
+unique_points = set([tuple(x) for x in data_query_points[20:].numpy().tolist()])
+print(len(unique_points))
