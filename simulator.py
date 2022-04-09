@@ -2,11 +2,48 @@ import math, time, timeit
 import itertools, random
 import numpy as np
 import dvfs, json
-from getPareto import load_json, get_Pareto
+from exploitOpt import load_json, getParetos, exploitOpt
 import gpflow
 import numpy as np
 from collections import OrderedDict
+
 import tensorflow as tf
+from trieste.acquisition.function import ExpectedHypervolumeImprovement, Fantasizer
+from trieste.acquisition.rule import EfficientGlobalOptimization
+from trieste.data import Dataset
+from trieste.models import TrainableModelStack
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
+from trieste.space import DiscreteSearchSpace
+from trieste.ask_tell_optimization import AskTellOptimizer
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+
+
+class BayesianOpt:
+
+    def __init__(self, search_space, batch_size):
+
+        self.num_objectives = 2
+        self.search_space = DiscreteSearchSpace(tf.constant(search_space, dtype=tf.float64))
+        
+        fant_ehvi = Fantasizer(ExpectedHypervolumeImprovement())
+        self.rule: EfficientGlobalOptimization = EfficientGlobalOptimization(builder=fant_ehvi, num_query_points=batch_size)
+
+
+    def build_stacked_independent_objectives_model(self, data: Dataset) -> TrainableModelStack:
+        gprs = []
+        for idx in range(self.num_objectives):
+            single_obj_data = Dataset(
+                data.query_points, tf.gather(data.observations, [idx], axis=1)
+            )
+            gpr = build_gpr(single_obj_data, self.search_space, likelihood_variance=1e-5)
+            gprs.append((GaussianProcessRegression(gpr), 1))
+
+        self.model = TrainableModelStack(*gprs)
+
+    def ask_for_suggestions(self, dataset):
+
+        ask_tell = AskTellOptimizer(self.search_space, dataset, self.model, acquisition_rule=self.rule, fit_model=True)
+        return ask_tell.ask()
 
 
 class Simulation:
@@ -62,21 +99,34 @@ class Simulation:
         print(explore_ids)
         self.init_explore_points = [list(self.profile_res)[i] for i in explore_ids]
 
-        enery_res = []
+        energy_res = []
 
         while len(self.observations) < len(self.init_explore_points):
             energy = self.run_explore_round()
-            enery_res.append(energy)
+            energy_res.append(energy)
 
-        for _ in range(Bayesian_rounds):
-            energy = self.run_Bayesian_round()
+        mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
+        mob.build_stacked_independent_objectives_model(self.build_trieste_dataset())
+
+        for _ in range(self.Bayesian_rounds):
+            dataset = self.build_trieste_dataset()
+            suggestions = mob.ask_for_suggestions(dataset)
+            energy = self.run_Bayesian_round(suggestions)
             energy_res.append(energy)
 
         while self.round_counter < self.rounds:
-            energy = self.run_exploit_round()
+            energy = self.run_exploit_round(self.observations)
             energy_res.append(energy)
 
+        print(energy_res, sum(energy_res))
         return energy_res
+
+    def build_trieste_dataset(self):
+        conf_mat = tf.constant([list(i) for i in self.observations], dtype=tf.float64)
+        print(conf_mat)
+        value_mat = tf.constant([self.profile_res[k] for k in self.observations], dtype=tf.float64)
+        print(value_mat)
+        return Dataset(conf_mat, value_mat)
 
 
     def run_explore_round(self):
@@ -86,21 +136,56 @@ class Simulation:
 
         energy, ddl, workload = 0, self.ddls[self.round_counter], self.workload
         
-        while workload > 0 and (ddl - tau) / min_batch_time > workload:
+        while workload > 0 and (ddl - self.tau) / min_batch_time > workload:
             if self.observations == self.init_explore_points:
                 break
             conf = self.init_explore_points[len(self.observations)]
-            b_size = math.floor(self.tau / self.profile_res[conf][0])
-            if workload >= b_size:
+            bsize = math.floor(self.tau / self.profile_res[conf][0])
+            if workload >= bsize:
                 self.observations.append(conf)
             else:
-                b_size = workload
-            energy += b_size * self.profile_res[conf][1]
+                bsize = workload
+            energy += bsize * self.profile_res[conf][1]
             ddl -= bsize * self.profile_res[conf][0]
-            workload -= b_size
+            workload -= bsize
 
         if workload > 0:
-            if (ddl - tau) / min_batch_time < workload:
+            if (ddl - self.tau) / min_batch_time < workload:
+                energy += min_time_energy * workload
+            else:
+                energy += self.run_exploit(self.observations, workload, ddl)
+
+        self.round_counter += 1
+        return energy
+
+
+    def run_Bayesian_round(self, suggestions):
+
+        suggestions = [tuple(suggestions[i].numpy().tolist()) for i in range(suggestions.shape[0])]
+        round_observations = []
+
+        min_batch_time = self.profile_res[self.init_explore_points[0]][0]
+        min_time_energy = self.profile_res[self.init_explore_points[0]][1]
+
+        energy, ddl, workload = 0, self.ddls[self.round_counter], self.workload
+        
+        while workload > 0 and (ddl - self.tau) / min_batch_time > workload:
+            if round_observations == suggestions:
+                break
+            conf = suggestions[len(round_observations)]
+            bsize = math.floor(self.tau / self.profile_res[conf][0])
+            if workload >= bsize:
+                round_observations.append(conf)
+            else:
+                bsize = workload
+            energy += bsize * self.profile_res[conf][1]
+            ddl -= bsize * self.profile_res[conf][0]
+            workload -= bsize
+
+        self.observations.extend(round_observations)
+
+        if workload > 0:
+            if (ddl - self.tau) / min_batch_time < workload:
                 energy += min_time_energy * workload
             else:
                 energy += self.run_exploit(self.observations, workload, ddl)
@@ -111,18 +196,51 @@ class Simulation:
 
     def run_exploit(self, observations, workload, ddl):
 
-    
-    def run_exploit_round(self):
+        ob_values = [self.profile_res[k] for k in observations]
+        return exploitOpt(ob_values, workload, ddl)
 
-        energy = self.run_exploit(self.observations, self.workload, self.ddls[self.round_counter])
+
+    
+    def run_exploit_round(self, observations):
+
+        energy = self.run_exploit(observations, self.workload, self.ddls[self.round_counter])
         self.round_counter += 1
+        return energy
+
+
+    def RUN_BASELINE(self):
+
+        min_time_energy = self.profile_res[(1.0, 1.0, 1.0)][1]
+        energy_res = []
+        for _ in range(self.rounds):
+            energy_res.append(self.epoch_size * self.data_size / self.batch_size * min_time_energy)
+        return energy_res
+
+    
+    def RUN_OPTIMAL(self):
+
+        self.round_counter = 0
+        observations = self.profile_res.keys()
+
+        energy_res = []
+        for _ in range(self.rounds):
+            energy_res.append(self.run_exploit_round(observations))
+        return energy_res
+
+        
 
 
 
 if __name__ == '__main__':
     s = Simulation('CIFAR10')
-    # print(s.profile_res)
-    s.run_algorithm()
+    A_res = s.RUN_ALGORITHM()
+    B_res = s.RUN_BASELINE()
+    O_res = s.RUN_OPTIMAL()
+
+    print(A_res, sum(A_res))
+    print(B_res, sum(B_res))
+    print(O_res, sum(O_res))
+
 
 
 
