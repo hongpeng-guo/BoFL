@@ -18,6 +18,10 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 
 
+import powerLog as pl
+from powerLog import PowerLogger
+
+
 class BayesianOpt:
 
     def __init__(self, search_space, batch_size):
@@ -93,11 +97,16 @@ class Simulation:
 
         self.round_counter = 0
         self.observations = []
+
+        logger = PowerLogger(interval=0.1, nodes=list(filter(lambda n: n[0].startswith('module/'), pl.getNodes())))
         
         explore_ids = random.sample(range(len(self.profile_res) - 1), k=self.explore_size - 1)
         explore_ids = [len(self.profile_res) -1] + explore_ids
         print(explore_ids)
         self.init_explore_points = [list(self.profile_res)[i] for i in explore_ids]
+
+        mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
+        self.run_Bayesian_warmup(mob, explore_ids)
 
         energy_res = []
 
@@ -105,12 +114,22 @@ class Simulation:
             energy = self.run_explore_round()
             energy_res.append(energy)
 
-        mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
-        mob.build_stacked_independent_objectives_model(self.build_trieste_dataset())
+        # mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
+        # mob.build_stacked_independent_objectives_model(self.build_trieste_dataset())
+        # suggestions = mob.ask_for_suggestions(self.build_trieste_dataset())
 
         for _ in range(self.Bayesian_rounds):
+            Bayesian_start = time.time()
+            logger.start()
             dataset = self.build_trieste_dataset()
             suggestions = mob.ask_for_suggestions(dataset)
+            logger.stop()
+            Bayesian_energy = logger.getTotalEnergy() / 1000
+            energy_res[-1] += Bayesian_energy
+            logger.reset()
+            Bayesian_end = time.time()
+            print('bayesian time cost is {}s.'.format(Bayesian_end - Bayesian_start))
+
             energy = self.run_Bayesian_round(suggestions)
             energy_res.append(energy)
 
@@ -118,7 +137,6 @@ class Simulation:
             energy = self.run_exploit_round(self.observations)
             energy_res.append(energy)
 
-        print(energy_res, sum(energy_res))
         return energy_res
 
     def build_trieste_dataset(self):
@@ -127,6 +145,17 @@ class Simulation:
         value_mat = tf.constant([self.profile_res[k] for k in self.observations], dtype=tf.float64)
         print(value_mat)
         return Dataset(conf_mat, value_mat)
+
+    def run_Bayesian_warmup(self, Bayesian_object, warmup_ids):
+        keys = [list(self.profile_res.keys())[i] for i in warmup_ids]
+        warmup_confs = [list(k) for k in keys]
+        warmup_values = [self.profile_res[k] for k in keys]
+        conf_mat = tf.constant(warmup_confs, dtype=tf.float64)
+        value_mat = tf.constant(warmup_values, dtype=tf.float64)
+        warmup_dataset = Dataset(conf_mat, value_mat)
+        Bayesian_object.build_stacked_independent_objectives_model(warmup_dataset)
+        Bayesian_object.ask_for_suggestions(warmup_dataset)
+        print('Finished system warmup')
 
 
     def run_explore_round(self):
@@ -241,6 +270,17 @@ if __name__ == '__main__':
     print(B_res, sum(B_res))
     print(O_res, sum(O_res))
 
+    import matplotlib.pyplot as plt
+    
+    plt.figure(figsize=(8,3))
+    x = np.arange(1, 101)
+    plt.plot(x, np.array(B_res), color='blue', label='baseline')
+    plt.plot(x, np.array(A_res), color='red', label='our algorithm')
+    plt.plot(x, np.array(O_res), color='green', label='oracle')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), ncol=3,)
+    plt.xlabel('Round Number')
+    plt.ylabel('Energy Consumed (J)')
+    plt.savefig('CIFAR10_sim.jpg')
 
 
 
