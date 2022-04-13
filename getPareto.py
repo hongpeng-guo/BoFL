@@ -26,3 +26,9 @@ if __name__ == '__main__':
     pareto, config = get_Pareto('ImageNet.json')
     for i in range(len(pareto)):
         print(pareto[i], config[i])
+
+    data = load_json('ImageNet.json').values()
+    t_data = [d[0] for d in data]
+    e_data = [d[1] for d in data]
+    print(max(t_data) / min(t_data))
+    print(max(e_data) / min(e_data))

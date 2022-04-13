@@ -261,7 +261,7 @@ class Simulation:
 
 
 if __name__ == '__main__':
-    s = Simulation('CIFAR10')
+    s = Simulation('IMDB')
     A_res = s.RUN_ALGORITHM()
     B_res = s.RUN_BASELINE()
     O_res = s.RUN_OPTIMAL()
@@ -280,7 +280,7 @@ if __name__ == '__main__':
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), ncol=3,)
     plt.xlabel('Round Number')
     plt.ylabel('Energy Consumed (J)')
-    plt.savefig('CIFAR10_sim.jpg')
+    plt.savefig('IMDB_sim.jpg')
 
 
 
