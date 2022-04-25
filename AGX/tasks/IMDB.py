@@ -10,7 +10,7 @@ from torchtext.vocab import build_vocab_from_iterator
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
  
-DATASETS_ROOT = '/home/hongpeng/Datasets'
+DATASETS_ROOT = '/home/sl29/data/energyFLDatasets'
 
 class RNN(nn.Module):
 
