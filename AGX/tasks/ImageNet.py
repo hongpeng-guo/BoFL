@@ -9,7 +9,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
  
-DATASETS_ROOT = '/home/hongpeng/Datasets/tiny-imagenet-200/train'
+DATASETS_ROOT = '/home/sl29/data/energyFLDatasets/tiny-imagenet-200/train'
 
 class ImageNet_ResNet50:
  

@@ -9,7 +9,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from vision_transformer_pytorch import VisionTransformer
  
-DATASETS_ROOT = '/home/hongpeng/Datasets'
+DATASETS_ROOT = '/home/sl29/data/energyFLDatasets'
 
 class CIFAR10_VIT:
  

@@ -11,17 +11,10 @@ _nodes = [('module/main', '0041', '0'),
           ('module/gpu', '0040', '0'),
           ('module/soc', '0040', '1'),
           ('module/wifi', '0040', '2'),
-
-          ('board/main', '0042', '0'),
-          ('board/5v0-io-sys', '0042', '1'),
-          ('board/3v3-sys', '0042', '2'),
-          ('board/3v3-io-sleep', '0043', '0'),
-          ('board/1v8-io', '0043', '1'),
-          ('board/3v3-m.2', '0043', '2'),
           ]
 
 _utils = [('cpu', '/proc/stat'),
-          ('gpu', '/sys/devices/17000000.gp10b/load'),
+          ('gpu', '/sys/devices/17000000.gv11b/load'),
           ('emc', '/sys/kernel/actmon_avg_activity/mc_all'),]
 
 
@@ -41,7 +34,7 @@ def getNodesByName(nameList=['module/main']):
 
 def powerSensorsPresent():
     """Check whether we are on the TX2 platform/whether the sensors are present"""
-    return os.path.isdir('/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/')
+    return os.path.isdir('/sys/bus/i2c/drivers/ina3221x/1-0041/iio:device1/')
 
 
 def getPowerMode():
@@ -50,7 +43,7 @@ def getPowerMode():
 
 def readValue(i2cAddr='0041', channel='0', valType='power'):
     """Reads a single value from the sensor"""
-    fname = '/sys/bus/i2c/drivers/ina3221x/0-%s/iio:device%s/in_%s%s_input' % (i2cAddr, i2cAddr[-1], valType, channel)
+    fname = '/sys/bus/i2c/drivers/ina3221x/1-%s/iio:device%s/in_%s%s_input' % (i2cAddr, i2cAddr[-1], valType, channel)
     with open(fname, 'r') as f:
         return f.read()
 
@@ -182,24 +175,26 @@ class PowerLogger:
         TPs = [self.getDataTrace(nodeName=name, valType=valType) for name in names]
         Ts, _ = TPs[0]
         Ps = [p for _, p in TPs]
-        energies = [self.getTotalEnergy(nodeName=nodeName) for nodeName in names]
+        energies = self.getTotalEnergy()
         Ps = list(map(list, zip(*Ps)))  # transpose list of lists
 
+        print(energies)
+
         # draw figure
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        plt.plot(Ts, Ps)
-        plt.xlabel('time [s]')
-        plt.ylabel(_valTypesFull[_valTypes.index(valType)])
-        plt.grid(True)
-        plt.legend(['%s (%.2f J)' % (name, enrgy / 1e3) for name, enrgy in zip(names, energies)])
-        plt.title('power trace (NVPModel: %s)' % (os.popen("nvpmodel -q | grep 'Power Mode'").read()[15:-1],))
-        if showEvents:
-            for t, _ in self.eventLog:
-                plt.axvline(x=t, color='black')
-        plt.show()
-        plt.savefig('energy.jpg')
+        # import matplotlib
+        # matplotlib.use('Agg')
+        # import matplotlib.pyplot as plt
+        # plt.plot(Ts, Ps)
+        # plt.xlabel('time [s]')
+        # plt.ylabel(_valTypesFull[_valTypes.index(valType)])
+        # plt.grid(True)
+        # plt.legend(['%s (%.2f J)' % (name, enrgy / 1e3) for name, enrgy in zip(names, energies)])
+        # plt.title('power trace (NVPModel: %s)' % (os.popen("nvpmodel -q | grep 'Power Mode'").read()[15:-1],))
+        # if showEvents:
+        #     for t, _ in self.eventLog:
+        #         plt.axvline(x=t, color='black')
+        # plt.show()
+        # plt.savefig('energy.jpg')
 
     def showMostCommonPowerValue(self, nodeName='module/main', valType='power', numBins=100):
         """computes a histogram of power values and print most frequent bin"""
@@ -211,20 +206,26 @@ class PowerLogger:
         maxProbVal = center[np.argmax(count)]  # 0.5*(center[np.argmax(count)] + center[np.argmax(count)+1])
         print('max frequent power bin value [mW]: %f' % (maxProbVal,))
 
-    def getTotalEnergy(self, nodeName='module/main', valType='power'):
+    def getTotalEnergy(self, valType='power'):
         """Integrate the power consumption over time."""
-        timeVals, dataVals = self.getDataTrace(nodeName=nodeName, valType=valType)
-        assert (len(timeVals) == len(dataVals))
-        tPrev, wgtdSum = 0.0, 0.0
-        for t, d in zip(timeVals, dataVals):
-            wgtdSum += d * (t - tPrev)
-            tPrev = t
-        return wgtdSum
+        result = 0
+        for nodeName in ['module/cpu', 'module/ddr', 'module/gpu', 'module/soc']:
+            timeVals, dataVals = self.getDataTrace(nodeName, valType=valType)
+            # assert (len(timeVals) == len(dataVals))
+            commonlength = min(len(timeVals), len(dataVals))
+            timeVals = timeVals[:commonlength]
+            dataVals = dataVals[:commonlength]
+            tPrev, wgtdSum = 0.0, 0.0
+            for t, d in zip(timeVals, dataVals):
+                wgtdSum += d * (t - tPrev)
+                tPrev = t
+            result += wgtdSum
+        return result
 
-    def getAveragePower(self, nodeName='module/main', valType='power'):
-        energy = self.getTotalEnergy(nodeName=nodeName, valType=valType)
-        timeVals, _ = self.getDataTrace(nodeName=nodeName, valType=valType)
-        return energy / timeVals[-1]
+    # def getAveragePower(self, nodeName='module/main', valType='power'):
+    #     energy = self.getTotalEnergy(nodeName=nodeName, valType=valType)
+    #     timeVals, _ = self.getDataTrace(nodeName=nodeName, valType=valType)
+    #     return energy / timeVals[-1]
 
 
     def getCpuUtil(self):
@@ -292,5 +293,5 @@ if __name__ == "__main__":
     time.sleep(5)
 
     pl.stop()
-    print(pl.getCpuUtil(), pl.getGpuUtil(), pl.getEmcUtil())
+    # print(pl.getCpuUtil(), pl.getGpuUtil(), pl.getEmcUtil())
     pl.showDataTraces()

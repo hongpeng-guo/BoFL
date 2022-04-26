@@ -23,11 +23,12 @@ def get_Pareto(file):
 
 
 if __name__ == '__main__':
-    pareto, config = get_Pareto('ImageNet.json')
+    pareto, config = get_Pareto('IMDB.json')
+    print(len(pareto))
     for i in range(len(pareto)):
         print(pareto[i], config[i])
 
-    data = load_json('ImageNet.json').values()
+    data = load_json('IMDB.json').values()
     t_data = [d[0] for d in data]
     e_data = [d[1] for d in data]
     print(max(t_data) / min(t_data))
