@@ -59,7 +59,8 @@ def getSysProfileResult(conf):
     for i in range(conf.shape[0]):
         print('step {:d}'.format(i))
         print(conf[i].numpy().tolist())
-        t, e = function_data[tuple(conf[i].numpy().tolist())]
+        conf_int = [round(item / 100) * 100 for item in conf[i].numpy().tolist()]
+        t, e = function_data[tuple(conf_int)]
         res.append([t, e])
     res = tf.stack(res, axis=0)
     return tf.cast(res, dtype=tf.float64)
