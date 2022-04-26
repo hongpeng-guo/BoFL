@@ -23,13 +23,66 @@ def get_Pareto(file):
 
 
 if __name__ == '__main__':
-    pareto, config = get_Pareto('IMDB.json')
+    pareto, config = get_Pareto('ImageNet.json')
     print(len(pareto))
     for i in range(len(pareto)):
         print(pareto[i], config[i])
 
-    data = load_json('IMDB.json').values()
+    data = load_json('ImageNet.json').values()
     t_data = [d[0] for d in data]
     e_data = [d[1] for d in data]
     print(max(t_data) / min(t_data))
     print(max(e_data) / min(e_data))
+
+
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from dvfs import CPU_FREQ_TABLE, GPU_FREQ_TABLE, EMC_FREQ_TABLE
+
+    c1, c2 = CPU_FREQ_TABLE[0], CPU_FREQ_TABLE[-1]
+    m1, m2 = EMC_FREQ_TABLE[0], EMC_FREQ_TABLE[-1]
+    g1, g2 = GPU_FREQ_TABLE[0], GPU_FREQ_TABLE[-1]
+
+    imagenet_dic = load_json('ImageNet.json')
+    cifar10_dic = load_json('CIFAR10.json')
+    imdb_dic = load_json('IMDB.json')
+
+    t1, e1 = [], []
+    t2, e2 = [], []
+    for g in GPU_FREQ_TABLE[5:]:
+        k1 = (c2, g, m1)
+        k2 = (c2, g, m2)
+        t1.append(imagenet_dic[k1][0])
+        e1.append(imagenet_dic[k1][1])
+        t2.append(imagenet_dic[k2][0])
+        e2.append(imagenet_dic[k2][1])
+
+    plt.clf()
+    plt.plot(t1)
+    plt.plot(t2)
+    # plt.plot(e1)
+    # plt.plot(e2)
+    plt.savefig('motivation1.jpg')
+
+
+    plt.clf()
+
+    t1, e1 = [], []
+    t2, e2 = [], []
+    t3, e3 = [], []
+    for c in CPU_FREQ_TABLE[8:]:
+        k1 = (c, g2, m2)
+        t1.append(imagenet_dic[k1][0])
+        e1.append(imagenet_dic[k1][1])
+        t2.append(cifar10_dic[k1][0])
+        e2.append(cifar10_dic[k1][1])
+        t3.append(imdb_dic[k1][0])
+        e3.append(imdb_dic[k1][1])
+
+    plt.plot(t1)
+    plt.plot(t2)
+    plt.plot(t3)
+    # plt.plot(e1)
+    # plt.plot(e2)
+    plt.savefig('motivation2.jpg')

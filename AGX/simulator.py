@@ -90,7 +90,7 @@ class Simulation:
         
     def generate_ddls(self):
         min_time = self.profile_res[(1.0, 1.0, 1.0)][0] * self.workload
-        return [min_time * random.uniform(1.0, 2.0) for _ in range(self.rounds)]
+        return [min_time * random.uniform(1.0, 3.0) for _ in range(self.rounds)]
 
 
     def RUN_ALGORITHM(self):
@@ -261,7 +261,7 @@ class Simulation:
 
 
 if __name__ == '__main__':
-    s = Simulation('IMDB')
+    s = Simulation('ImageNet')
     A_res = s.RUN_ALGORITHM()
     B_res = s.RUN_BASELINE()
     O_res = s.RUN_OPTIMAL()
@@ -280,7 +280,7 @@ if __name__ == '__main__':
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), ncol=3,)
     plt.xlabel('Round Number')
     plt.ylabel('Energy Consumed (J)')
-    plt.savefig('IMDB_sim.jpg')
+    plt.savefig('ImageNet_sim.jpg')
 
 
 
