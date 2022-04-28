@@ -311,7 +311,7 @@ if __name__ == '__main__':
         'BoFL': A_res,
         'phase': phase_starter,
         'overhead': BO_overhead,
-        'ddls': s.ddls
+        'ddls': s.ddls,
         'min_ddl': s.profile_res[(1.0, 1.0, 1.0)][0] * s.workload,
     }
 
