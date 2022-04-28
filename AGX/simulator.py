@@ -55,7 +55,7 @@ class BayesianOpt:
 
 class Simulation:
 
-    def __init__(self, exp_name):
+    def __init__(self, exp_name, ddl_max):
 
         if exp_name == 'CIFAR10':
             self.batch_size = 32
@@ -82,7 +82,7 @@ class Simulation:
         self.tau = 5
 
         self.profile_res = self.generate_normalized_profile_results()
-        self.ddls = self.generate_ddls()
+        self.ddls = self.generate_ddls(ddl_max)
 
 
     def generate_Bayesian_batch_size(self):
@@ -96,15 +96,17 @@ class Simulation:
         res = {tuple([conf[i]/self.max_conf[i] for i in range(3)]): value for conf, value in profile_res.items() if conf[0] in dvfs.CPU_FREQ_TABLE}
         return OrderedDict(sorted(res.items()))
         
-    def generate_ddls(self):
+    def generate_ddls(self, ddl_max):
         min_time = self.profile_res[(1.0, 1.0, 1.0)][0] * self.workload
-        return [min_time * random.uniform(1.0, 2.0) for _ in range(self.rounds)]
+        return [min_time * random.uniform(1.0, ddl_max) for _ in range(self.rounds)]
 
 
     def RUN_ALGORITHM(self):
 
         self.round_counter = 0
         self.observations = []
+
+        phase_starter = []
 
         logger = PowerLogger(interval=0.1, nodes=list(filter(lambda n: n[0].startswith('module/'), pl.getNodes())))
         
@@ -115,6 +117,7 @@ class Simulation:
 
         energy_res = []
 
+        phase_starter.append(self.round_counter)
         while len(self.observations) < len(self.init_explore_points):
             energy = self.run_explore_round()
             energy_res.append(energy)
@@ -129,6 +132,9 @@ class Simulation:
         mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
         self.run_Bayesian_warmup(mob, explore_ids)
 
+
+        phase_starter.append(self.round_counter)
+        Bayesian_overhead = []
         while True:
 
             dataset = self.build_trieste_dataset()
@@ -146,19 +152,21 @@ class Simulation:
             suggestions = mob.ask_for_suggestions(dataset)
             logger.stop()
             Bayesian_energy = logger.getTotalEnergy() / 1000
-            energy_res[-1] += Bayesian_energy
-            logger.reset()
             Bayesian_end = time.time()
+            Bayesian_overhead.append((Bayesian_end - Bayesian_start, Bayesian_energy))
+            # energy_res[-1] += Bayesian_energy
+            logger.reset()
             print('bayesian time cost is {}s.'.format(Bayesian_end - Bayesian_start))
 
             energy = self.run_Bayesian_round(suggestions)
             energy_res.append(energy)
 
+        phase_starter.append(self.round_counter)
         while self.round_counter < self.rounds:
             energy = self.run_exploit_round(self.observations)
             energy_res.append(energy)
 
-        return energy_res
+        return energy_res, phase_starter, Bayesian_overhead
 
     def build_trieste_dataset(self):
         conf_mat = tf.constant([list(i) for i in self.observations], dtype=tf.float64)
@@ -284,10 +292,10 @@ class Simulation:
 if __name__ == '__main__':
 
     seed_dict = {'CIFAR10': 3793, 'ImageNet': 3456, 'IMDB': 4567}
-    exp = sys.argv[1]
+    exp, ddl_max = sys.argv[1], float(sys.argv[2])
     random.seed(seed_dict[exp])
-    s = Simulation(exp)
-    A_res = s.RUN_ALGORITHM()
+    s = Simulation(exp, ddl_max)
+    A_res, phase_starter, BO_overhead = s.RUN_ALGORITHM()
     B_res = s.RUN_BASELINE()
     O_res = s.RUN_OPTIMAL()
 
@@ -295,17 +303,33 @@ if __name__ == '__main__':
     print(B_res, sum(B_res))
     print(O_res, sum(O_res))
 
-    import matplotlib.pyplot as plt
+    print(phase_starter, BO_overhead)
+
+    RESULTS = {
+        'Baseline': B_res,
+        'Oracle': O_res,
+        'BoFL': A_res,
+        'phase': phase_starter,
+        'overhead': BO_overhead,
+        'ddls': s.ddls
+        'min_ddl': s.profile_res[(1.0, 1.0, 1.0)][0] * s.workload,
+    }
+
+    file_name = "results/{}_{}.json".format(exp, sys.argv[2])
+    with open(file_name , 'w') as fp:
+        json.dump(RESULTS, fp)
+
+    # import matplotlib.pyplot as plt
     
-    plt.figure(figsize=(8,3))
-    x = np.arange(1, 101)
-    plt.plot(x, np.array(B_res), color='blue', label='baseline')
-    plt.plot(x, np.array(A_res), color='red', label='our algorithm')
-    plt.plot(x, np.array(O_res), color='green', label='oracle')
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), ncol=3,)
-    plt.xlabel('Round Number')
-    plt.ylabel('Energy Consumed (J)')
-    plt.savefig('{}_sim.jpg'.format(exp))
+    # plt.figure(figsize=(8,3))
+    # x = np.arange(1, 101)
+    # plt.plot(x, np.array(B_res), color='blue', label='baseline')
+    # plt.plot(x, np.array(A_res), color='red', label='our algorithm')
+    # plt.plot(x, np.array(O_res), color='green', label='oracle')
+    # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), ncol=3,)
+    # plt.xlabel('Round Number')
+    # plt.ylabel('Energy Consumed (J)')
+    # plt.savefig('{}_sim.jpg'.format(exp))
 
 
 
