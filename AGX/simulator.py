@@ -19,7 +19,10 @@ from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_poi
 
 
 import powerLog as pl
+import sys
 from powerLog import PowerLogger
+
+SPACE_SIZE = len(dvfs.CPU_FREQ_TABLE) * len(dvfs.GPU_FREQ_TABLE) * len(dvfs.EMC_FREQ_TABLE)
 
 
 class BayesianOpt:
@@ -56,15 +59,15 @@ class Simulation:
 
         if exp_name == 'CIFAR10':
             self.batch_size = 32
-            self.data_size = 320
+            self.data_size = 1280
             self.epoch_size = 5
         elif exp_name == 'ImageNet':
             self.batch_size = 8
-            self.data_size = 240
+            self.data_size = 720
             self.epoch_size = 2
         elif exp_name == 'IMDB':
             self.batch_size = 8
-            self.data_size = 160
+            self.data_size = 320
             self.epoch_size = 4
 
         self.exp_name = exp_name
@@ -72,25 +75,30 @@ class Simulation:
         self.max_conf = tuple([dim[-1] for dim in dvfs.CONFIG_SPACE])
 
         self.rounds = 100
-        self.explore_size = 20
-        self.Bayesian_rounds = 5
-        self.Bayesian_batch_size = 5
+        self.explore_size = math.ceil(SPACE_SIZE * 0.01)
+        self.Bayesian_observation_threshold = math.ceil(SPACE_SIZE * 0.03)
+        self.Bayesian_batch_size = None
+        self.HV_threshold = 0.01
         self.tau = 5
 
-        random.seed(3793)
         self.profile_res = self.generate_normalized_profile_results()
         self.ddls = self.generate_ddls()
 
 
+    def generate_Bayesian_batch_size(self):
+
+        prev_suggestion = math.floor(sum(self.ddls[:self.round_counter]) / self.round_counter / self.tau)
+        self.Bayesian_batch_size = min(prev_suggestion, 10)
+
     def generate_normalized_profile_results(self):
 
         profile_res = load_json(self.exp_name + '.json')
-        res = {tuple([conf[i]/self.max_conf[i] for i in range(3)]): value for conf, value in profile_res.items()}
+        res = {tuple([conf[i]/self.max_conf[i] for i in range(3)]): value for conf, value in profile_res.items() if conf[0] in dvfs.CPU_FREQ_TABLE}
         return OrderedDict(sorted(res.items()))
         
     def generate_ddls(self):
         min_time = self.profile_res[(1.0, 1.0, 1.0)][0] * self.workload
-        return [min_time * random.uniform(1.0, 3.0) for _ in range(self.rounds)]
+        return [min_time * random.uniform(1.0, 2.0) for _ in range(self.rounds)]
 
 
     def RUN_ALGORITHM(self):
@@ -105,9 +113,6 @@ class Simulation:
         print(explore_ids)
         self.init_explore_points = [list(self.profile_res)[i] for i in explore_ids]
 
-        mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
-        self.run_Bayesian_warmup(mob, explore_ids)
-
         energy_res = []
 
         while len(self.observations) < len(self.init_explore_points):
@@ -118,10 +123,26 @@ class Simulation:
         # mob.build_stacked_independent_objectives_model(self.build_trieste_dataset())
         # suggestions = mob.ask_for_suggestions(self.build_trieste_dataset())
 
-        for _ in range(self.Bayesian_rounds):
+        HV_last = 0
+        ref_point = get_reference_point(self.build_trieste_dataset().observations)
+        self.generate_Bayesian_batch_size()
+        mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
+        self.run_Bayesian_warmup(mob, explore_ids)
+
+        while True:
+
+            dataset = self.build_trieste_dataset()
+            HV_new = Pareto(dataset.observations).hypervolume_indicator(ref_point)
+            HV_improvement = (HV_new - HV_last) / HV_last
+            print("EHVI improvement is: {}".format(HV_improvement))
+            HV_last = HV_new
+
+            print(len(dataset.observations))
+            if len(dataset.observations) > self.Bayesian_observation_threshold and HV_improvement < 0.01:
+                break
+
             Bayesian_start = time.time()
             logger.start()
-            dataset = self.build_trieste_dataset()
             suggestions = mob.ask_for_suggestions(dataset)
             logger.stop()
             Bayesian_energy = logger.getTotalEnergy() / 1000
@@ -261,7 +282,11 @@ class Simulation:
 
 
 if __name__ == '__main__':
-    s = Simulation('ImageNet')
+
+    seed_dict = {'CIFAR10': 3793, 'ImageNet': 3456, 'IMDB': 4567}
+    exp = sys.argv[1]
+    random.seed(seed_dict[exp])
+    s = Simulation(exp)
     A_res = s.RUN_ALGORITHM()
     B_res = s.RUN_BASELINE()
     O_res = s.RUN_OPTIMAL()
@@ -280,7 +305,7 @@ if __name__ == '__main__':
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), ncol=3,)
     plt.xlabel('Round Number')
     plt.ylabel('Energy Consumed (J)')
-    plt.savefig('ImageNet_sim.jpg')
+    plt.savefig('{}_sim.jpg'.format(exp))
 
 
 
