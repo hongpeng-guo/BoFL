@@ -76,7 +76,7 @@ class Simulation:
 
         self.rounds = 100
         self.explore_size = 10
-        self.Bayesian_observation_threshold = math.ceil(SPACE_SIZE * 0.05)
+        self.Bayesian_observation_threshold = math.ceil(SPACE_SIZE * 0.03)
         self.Bayesian_batch_size = None
         self.HV_threshold = 0.01
         self.tau = 5
