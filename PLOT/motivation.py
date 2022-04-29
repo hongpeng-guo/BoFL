@@ -14,6 +14,8 @@ plt.rcParams['lines.linewidth'] = 3
 markers = ['o','P','s','>','D','^']
 
 
+Home_folder = '/Users/hongpengguo/Desktop/Spring22/Middleware22/figures'
+
 def load_json(file):
     with open(file) as f:
         data = json.load(f)
@@ -60,7 +62,7 @@ Data = [[TX2_CIFAR10_data, TX2_ImageNet_data, TX2_IMDB_data],
 
 # Plot the first motivation figure to show non-linear, monotonic relation
 
-c1, c2 = agx.CPU_FREQ_TABLE[4], agx.CPU_FREQ_TABLE[-1]
+c1, c2 = agx.CPU_FREQ_TABLE[0], agx.CPU_FREQ_TABLE[-1]
 m1, m2 = agx.EMC_FREQ_TABLE[0], agx.EMC_FREQ_TABLE[-1]
 g1, g2 = agx.GPU_FREQ_TABLE[0], agx.GPU_FREQ_TABLE[-1]
 
@@ -95,7 +97,9 @@ axs[1].legend(fancybox=True, fontsize='16')
 axs[1].set_xlabel('GPU Frequencies (GHz)', fontsize='16')
 axs[1].set_ylabel('Joule', fontsize='16')
 axs[1].grid(linestyle='--', linewidth=2)
-plt.show()
+plt.savefig('{}/{}.pdf'.format(Home_folder, 'motivation1'), 
+            dpi=600, pad_inches = 0, bbox_inche='tight')
+
 
 
 # Plot the second motivation figure to show the differences between models
@@ -138,7 +142,8 @@ axs[1].set_yticks([5.0, 7.0, 9.0])
 axs[1].set_xticks([0.7, 0.9, 1.1, 1.3, 1.5, 1.7])
 axs[1].yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:.1f}'))
 axs[1].grid(linestyle='--', linewidth=2)
-plt.show()
+plt.savefig('{}/{}.pdf'.format(Home_folder, 'motivation2'), 
+            dpi=600, pad_inches = 0, bbox_inche='tight')
 
 
 # Plot the third motivation figure to show the differences between devices
@@ -186,4 +191,6 @@ autolabel(rect4, ax2)
 autolabel(rect5, ax2)
 autolabel(rect6, ax2)
 
-plt.show()
+
+plt.savefig('{}/{}.pdf'.format(Home_folder, 'motivation3'), 
+            dpi=600, pad_inches = 0, bbox_inche='tight')
