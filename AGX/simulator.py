@@ -107,6 +107,7 @@ class Simulation:
         self.observations = []
 
         phase_starter = []
+        ob_round_counter = []
 
         logger = PowerLogger(interval=0.1, nodes=list(filter(lambda n: n[0].startswith('module/'), pl.getNodes())))
         
@@ -121,6 +122,7 @@ class Simulation:
         while len(self.observations) < len(self.init_explore_points):
             energy = self.run_explore_round()
             energy_res.append(energy)
+            ob_round_counter.append(len(self.observations))
 
         # mob = BayesianOpt([list(k) for k in self.profile_res.keys()], self.Bayesian_batch_size)
         # mob.build_stacked_independent_objectives_model(self.build_trieste_dataset())
@@ -160,13 +162,14 @@ class Simulation:
 
             energy = self.run_Bayesian_round(suggestions)
             energy_res.append(energy)
+            ob_round_counter.append(len(self.observations))
 
         phase_starter.append(self.round_counter)
         while self.round_counter < self.rounds:
             energy = self.run_exploit_round(self.observations)
             energy_res.append(energy)
 
-        return energy_res, phase_starter, Bayesian_overhead
+        return energy_res, phase_starter, Bayesian_overhead, ob_round_counter
 
     def build_trieste_dataset(self):
         conf_mat = tf.constant([list(i) for i in self.observations], dtype=tf.float64)
@@ -295,7 +298,7 @@ if __name__ == '__main__':
     exp, ddl_max = sys.argv[1], float(sys.argv[2])
     random.seed(seed_dict[exp])
     s = Simulation(exp, ddl_max)
-    A_res, phase_starter, BO_overhead = s.RUN_ALGORITHM()
+    A_res, phase_starter, BO_overhead, ob_round_counter = s.RUN_ALGORITHM()
     B_res = s.RUN_BASELINE()
     O_res = s.RUN_OPTIMAL()
 
@@ -309,6 +312,8 @@ if __name__ == '__main__':
         'Baseline': B_res,
         'Oracle': O_res,
         'BoFL': A_res,
+        'observations': [tuple([round(ob[i] * s.max_conf[i] / 100) * 100 for i in range(3)]) for ob in s.observations],
+        'ob_round_counter': ob_round_counter,
         'phase': phase_starter,
         'overhead': BO_overhead,
         'ddls': s.ddls,
