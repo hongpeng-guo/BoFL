@@ -46,7 +46,7 @@ def plot_energy_curve_by_round(device, task_name, max_ddl):
 
     fig, (ax1, ax2) = plt.subplots(2,1,figsize=(9,6), gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05}, sharex=True)
     x = np.arange(1, 41)
-    ax1.plot(x, np.array(baseline), marker=markers[0], markersize=5,  label='Max',linestyle="--")
+    ax1.plot(x, np.array(baseline), marker=markers[0], markersize=5,  label='Performance',linestyle="--")
     ax1.plot(x, np.array(oracle), marker=markers[2], markersize=5,  label='Oracle', linestyle="-")
     ax1.plot(x, np.array(bofl), marker=markers[1], markersize=5,  label='BoFL', linestyle=":")
     ax1.axvspan(explore_start, Bayesian_start, alpha=0.2, color='red', lw=0, label='Phase 1')
@@ -77,7 +77,7 @@ def plot_pareto_graph(device, task_name, max_ddl):
     ddls = Data[d][t][m]['ddls'][:40]
 
     # To  be finished
-    
+
 
 if __name__ == '__main__':
     plot_energy_curve_by_round('AGX', 'IMDB', 2.0)
