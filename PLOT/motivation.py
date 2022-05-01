@@ -10,7 +10,7 @@ plt.rcParams['xtick.labelsize'] = 15
 plt.rcParams['ytick.labelsize'] = 15
 plt.rcParams["font.family"] = "Times New Roman"
 plt.rcParams['lines.linewidth'] = 3
-# colors = ['#DB1F48','#FF9636','#1C4670','#9D5FFB','#21B6A8','#D65780']
+colors = ['#DB1F48','#FF9636','#1C4670','#9D5FFB','#21B6A8','#D65780']
 markers = ['o','P','s','>','D','^']
 
 
@@ -83,16 +83,16 @@ for g in x:
 
 fig, axs = plt.subplots(2, sharex=True)
 x = [1.0 * i / 1e9 for i in x]
-axs[0].set_title('Execution Latency per Minibatch', fontsize='16')
-axs[0].plot(x, t2, marker=markers[0], markersize=10, label='CPU Frequency: 2.2 GHz')
-axs[0].plot(x, t3, marker=markers[1], markersize=10, label='CPU Frequency: 0.4 GHz')
+axs[0].set_title('(a) Execution Latency per Minibatch', fontsize='14', fontweight='bold')
+axs[0].plot(x, t2, marker=markers[0], markersize=10, label='CPU Frequency: 2.2 GHz', color=colors[3])
+axs[0].plot(x, t3, marker=markers[1], markersize=10, label='CPU Frequency: 0.4 GHz', color=colors[4])
 axs[0].set_ylabel('Second', fontsize='16')
 axs[0].set_yticks([0.3, 0.4])
 axs[0].grid(linestyle='--', linewidth=2)
 
-axs[1].set_title('Energy Consumption per Minibatch', fontsize='16')
-axs[1].plot(x, e2, marker=markers[0], markersize=10, label='CPU Frequency: 2.2 GHz')
-axs[1].plot(x, e3, marker=markers[1], markersize=10, label='CPU Frequency: 0.4 GHz')
+axs[1].set_title('(b) Energy Consumption per Minibatch', fontsize='14', fontweight='bold')
+axs[1].plot(x, e2, marker=markers[0], markersize=10, label='CPU Frequency: 2.2 GHz', color=colors[3])
+axs[1].plot(x, e3, marker=markers[1], markersize=10, label='CPU Frequency: 0.4 GHz', color=colors[4])
 axs[1].legend(fancybox=True, fontsize='16')
 axs[1].set_xlabel('GPU Frequencies (GHz)', fontsize='16')
 axs[1].set_ylabel('Joule', fontsize='16')
@@ -123,18 +123,18 @@ for c in x:
 
 fig, axs = plt.subplots(2, sharex=True)
 x = [1.0 * i / 1e6 for i in x]
-axs[0].set_title('Execuation Latency per Minibatch', fontsize='16')
-axs[0].plot(x, t1, marker=markers[2], markersize=10, label='ViT')
-axs[0].plot(x, t2, marker=markers[3], markersize=10, label='ResNet50')
-axs[0].plot(x, t3, marker=markers[4], markersize=10, label='LSTM')
+axs[0].set_title('(a) Execuation Latency per Minibatch', fontsize='14', fontweight='bold')
+axs[0].plot(x, t1, marker=markers[2], markersize=10, label='ViT', color=colors[0])
+axs[0].plot(x, t2, marker=markers[3], markersize=10, label='ResNet50', color=colors[1])
+axs[0].plot(x, t3, marker=markers[4], markersize=10, label='LSTM', color=colors[2])
 axs[0].set_ylabel('Second', fontsize='16')
 axs[0].grid(linestyle='--', linewidth=2)
 
 
-axs[1].set_title('Energy Consumption per Minibatch', fontsize='16')
-axs[1].plot(x, e1, marker=markers[2], markersize=10, label='ViT')
-axs[1].plot(x, e2, marker=markers[3], markersize=10, label='ResNet50')
-axs[1].plot(x, e3, marker=markers[4], markersize=10, label='LSTM')
+axs[1].set_title('(b) Energy Consumption per Minibatch', fontsize='14', fontweight='bold')
+axs[1].plot(x, e1, marker=markers[2], markersize=10, label='ViT', color=colors[0])
+axs[1].plot(x, e2, marker=markers[3], markersize=10, label='ResNet50', color=colors[1])
+axs[1].plot(x, e3, marker=markers[4], markersize=10, label='LSTM', color=colors[2])
 axs[1].set_xlabel('CPU Frequencies (GHz)', fontsize='16')
 axs[1].set_ylabel('Joule', fontsize='16')
 axs[1].legend(ncol=3, fancybox=True, fontsize='16', loc='best', bbox_to_anchor=(0., 0., 1.0, 0.5))
@@ -159,16 +159,19 @@ fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 labels = ['ViT', 'ResNet50', 'LSTM']
 x = np.arange(len(labels))
 
-ax1.set_title('Execution Latency', fontsize='16')
+ax1.set_title('(a) Execution Latency', fontsize='14', fontweight='bold')
 ax1.set_xticks(x)
 ax1.set_ylim(0.0, 1.05)
 ax1.set_yticks([0.2, 0.6, 1.0])
 ax1.set_yticklabels(['0.2 x', '0.6 x', '1.0 x'])
 ax1.set_xticklabels(labels)
-rect1 = ax1.bar(0, ViT_ratio[0], width=0.5, hatch=None, edgecolor='black')
-rect2 = ax1.bar(1, ResNet_ratio[0], width=0.5, hatch='/', edgecolor='black')
-rect3 = ax1.bar(2, LSTM_ratio[1], width=0.5, hatch='\\', edgecolor='black')
+rect1 = ax1.bar(0, ViT_ratio[0], width=0.5, hatch=None, edgecolor='black', color=colors[0])
+rect2 = ax1.bar(1, ResNet_ratio[0], width=0.5, hatch='/', edgecolor='black', color=colors[1])
+rect3 = ax1.bar(2, LSTM_ratio[1], width=0.5, hatch='\\', edgecolor='black', color=colors[2])
 ax1.yaxis.grid(linestyle='--',  linewidth=1.5)
+ax1.set_ylabel('Normalized Performace to TX2', fontsize='16')
+ax1.text(0.5, 0.78, "TX2", ha="left", va="bottom", rotation=90, size=18,
+            bbox=dict(boxstyle="rarrow,pad=0.3", fc="cyan", ec="black", lw=2))
 tx2_line = ax1.get_ygridlines()[2]
 tx2_line.set_color('red')
 tx2_line.set_linewidth(4)
@@ -177,12 +180,12 @@ autolabel(rect2, ax1)
 autolabel(rect3, ax1)
 
 
-ax2.set_title('Energy Consumption', fontsize='16')
+ax2.set_title('(b) Energy Consumption', fontsize='14', fontweight='bold')
 ax2.set_xticks(x)
 ax2.set_xticklabels(labels)
-rect4 = ax2.bar(0, ViT_ratio[1], width=0.5, hatch=None, edgecolor='black')
-rect5 = ax2.bar(1, ResNet_ratio[1], width=0.5, hatch='/', edgecolor='black')
-rect6 = ax2.bar(2, LSTM_ratio[1], width=0.5, hatch='\\', edgecolor='black')
+rect4 = ax2.bar(0, ViT_ratio[1], width=0.5, hatch=None, edgecolor='black', color=colors[0])
+rect5 = ax2.bar(1, ResNet_ratio[1], width=0.5, hatch='/', edgecolor='black', color=colors[1])
+rect6 = ax2.bar(2, LSTM_ratio[1], width=0.5, hatch='\\', edgecolor='black', color=colors[2])
 ax2.yaxis.grid(linestyle='--',  linewidth=1.5)
 tx2_line = ax2.get_ygridlines()[2]
 tx2_line.set_color('red')
