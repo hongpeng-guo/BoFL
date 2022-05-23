@@ -83,14 +83,14 @@ for g in x:
 
 fig, axs = plt.subplots(2, sharex=True)
 x = [1.0 * i / 1e9 for i in x]
-axs[0].set_title('(a) Execution Latency per Minibatch', fontsize='14', fontweight='bold')
+axs[0].set_title('(a) Execution Latency per Minibatch', fontsize='16', fontweight='bold')
 axs[0].plot(x, t2, marker=markers[0], markersize=10, label='CPU Frequency: 2.2 GHz', color=colors[3])
 axs[0].plot(x, t3, marker=markers[1], markersize=10, label='CPU Frequency: 0.4 GHz', color=colors[4])
 axs[0].set_ylabel('Second', fontsize='16')
 axs[0].set_yticks([0.3, 0.4])
 axs[0].grid(linestyle='--', linewidth=2)
 
-axs[1].set_title('(b) Energy Consumption per Minibatch', fontsize='14', fontweight='bold')
+axs[1].set_title('(b) Energy Consumption per Minibatch', fontsize='16', fontweight='bold')
 axs[1].plot(x, e2, marker=markers[0], markersize=10, label='CPU Frequency: 2.2 GHz', color=colors[3])
 axs[1].plot(x, e3, marker=markers[1], markersize=10, label='CPU Frequency: 0.4 GHz', color=colors[4])
 axs[1].legend(fancybox=True, fontsize='16')
@@ -123,7 +123,7 @@ for c in x:
 
 fig, axs = plt.subplots(2, sharex=True)
 x = [1.0 * i / 1e6 for i in x]
-axs[0].set_title('(a) Execuation Latency per Minibatch', fontsize='14', fontweight='bold')
+axs[0].set_title('(a) Execuation Latency per Minibatch', fontsize='16', fontweight='bold')
 axs[0].plot(x, t1, marker=markers[2], markersize=10, label='ViT', color=colors[0])
 axs[0].plot(x, t2, marker=markers[3], markersize=10, label='ResNet50', color=colors[1])
 axs[0].plot(x, t3, marker=markers[4], markersize=10, label='LSTM', color=colors[2])
@@ -131,7 +131,7 @@ axs[0].set_ylabel('Second', fontsize='16')
 axs[0].grid(linestyle='--', linewidth=2)
 
 
-axs[1].set_title('(b) Energy Consumption per Minibatch', fontsize='14', fontweight='bold')
+axs[1].set_title('(b) Energy Consumption per Minibatch', fontsize='16', fontweight='bold')
 axs[1].plot(x, e1, marker=markers[2], markersize=10, label='ViT', color=colors[0])
 axs[1].plot(x, e2, marker=markers[3], markersize=10, label='ResNet50', color=colors[1])
 axs[1].plot(x, e3, marker=markers[4], markersize=10, label='LSTM', color=colors[2])
@@ -159,7 +159,7 @@ fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 labels = ['ViT', 'ResNet50', 'LSTM']
 x = np.arange(len(labels))
 
-ax1.set_title('(a) Execution Latency', fontsize='14', fontweight='bold')
+ax1.set_title('(a) Execution Latency', fontsize='16', fontweight='bold')
 ax1.set_xticks(x)
 ax1.set_ylim(0.0, 1.05)
 ax1.set_yticks([0.2, 0.6, 1.0])
@@ -180,7 +180,7 @@ autolabel(rect2, ax1)
 autolabel(rect3, ax1)
 
 
-ax2.set_title('(b) Energy Consumption', fontsize='14', fontweight='bold')
+ax2.set_title('(b) Energy Consumption', fontsize='16', fontweight='bold')
 ax2.set_xticks(x)
 ax2.set_xticklabels(labels)
 rect4 = ax2.bar(0, ViT_ratio[1], width=0.5, hatch=None, edgecolor='black', color=colors[0])
